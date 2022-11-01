@@ -1,0 +1,20 @@
+{
+   "TargetValue": 312.5,
+   "ScaleOutCooldown": 1,
+   "ScaleInCooldown": 1,
+   "CustomizedMetricSpecification": {
+      "MetricName": "BackLogPerCapacityUnit",
+      "Namespace": "Queue Based Scaling Metrics",
+      "Dimensions": [
+         {
+            "Name": "AmazonMQ",
+            "Value": "scan-dev"
+         },
+         {
+            "Name": "Queue",
+            "Value": "scans_dev"
+         }
+      ],
+      "Statistic": "Average"
+   }
+}

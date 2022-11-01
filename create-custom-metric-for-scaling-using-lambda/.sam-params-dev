@@ -1,0 +1,11 @@
+Env=dev
+ClusterNameParameter=dev-worker-cluster
+ServiceNameParameter=dev-worker-service
+MqClusterNameParameter=scan-dev
+MqQueueNameParameter=scans_dev
+AcceptableLatencyParameter=250
+TimeProcessPerMessageParameter=0.8
+SecurityGroupIdParameter=sg-123456789
+SubnetIdAParameter=subnet-123456789
+SubnetIdBParameter=subnet-123456789
+SubnetIdCParameter=subnet-123456789

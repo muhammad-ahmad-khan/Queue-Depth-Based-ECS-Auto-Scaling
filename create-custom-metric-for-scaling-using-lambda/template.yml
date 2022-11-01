@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Stack which creates a lambda function that is invoked by a CloudWatch Event Rule every minute to update custom metric datapoints through aws sdk calls.
+
+Parameters:
+  Env:
+    Type: String
+    Description: Values can be dev, qa, devops, test, staging and prod respectively
+  ClusterNameParameter:
+    Type: String
+  ServiceNameParameter:
+    Type: String
+  MqClusterNameParameter:
+    Type: String
+  MqQueueNameParameter:
+    Type: String
+  AcceptableLatencyParameter:
+    Type: Number
+  TimeProcessPerMessageParameter:
+    Type: Number
+  SecurityGroupIdParameter:
+    Type: String
+  SubnetIdAParameter:
+    Type: String
+  SubnetIdBParameter:
+    Type: String
+  SubnetIdCParameter:
+    Type: String
+
+Resources:
+  CustomMetricRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+                - 'events.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'LambdaBasicExecutionPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: LambdaExecutionPolicy
+                Effect: Allow
+                Action:
+                - ec2:Describe*
+                - ec2:CreateNetworkInterface
+                - ec2:DeleteNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - cloudwatch:GetMetricData
+                - cloudwatch:PutMetricData
+                - "ecs:*"
+                Resource: '*'
+              - Sid: ExtraPolicy
+                Effect: Allow
+                Action:
+                - ssm:GetParameters
+                - ssm:GetParameter
+                Resource: '*'
+        - PolicyName: 'LogPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+
+  CustomMetricFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub create-custom-metric-for-scaling-${Env}-cluster # FunctionName uses Env variable to identify its belonging to the Env specific cluster
+      Description: A function that is invoked by a CloudWatch Event every minute to update custom metric datapoints through aws sdk calls.
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Timeout: 900
+      Role: !GetAtt CustomMetricRole.Arn
+      Events:
+        CloudWatchEventRule:
+          Type: Schedule
+          Properties:
+            Input: !Sub '{"cluster_name": "${ClusterNameParameter}","service_name": "${ServiceNameParameter}","mq_cluster_name": "${MqClusterNameParameter}","mq_queue_name": "${MqQueueNameParameter}","acceptable_latency": "${AcceptableLatencyParameter}","time_process_per_message": "${TimeProcessPerMessageParameter}"}'
+            # Read more about schedule expressions here: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+            Schedule: cron(* * * * ? *) # Invoke function every minute
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecurityGroupIdParameter
+        SubnetIds:
+          - !Ref SubnetIdAParameter
+          - !Ref SubnetIdBParameter
+          - !Ref SubnetIdCParameter
